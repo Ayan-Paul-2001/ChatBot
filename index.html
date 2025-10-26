@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIELTS BERI Chatbot</title>
+  <style>
+    /* Simplified CSS Variables for Clean Professional Design */
+    :root {
+      --primary-color: #2563eb;
+      --background: #ffffff;
+      --background-alt: #f8fafc;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --border-radius: 8px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 20px;
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-size-sm: 0.875rem;
+      --font-size-base: 1rem;
+      --font-size-lg: 1.125rem;
+      --transition-base: 0.2s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      height: 700px;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 25px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    #chat-box {
+      flex: 1;
+      padding: 25px;
+      overflow-y: auto;
+      background: #f8f9fa;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    #chat-box::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 4px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-size: 15px;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .user-message {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bot-message {
+      background: white;
+      color: #2d3748;
+      align-self: flex-start;
+      border: 1px solid #e2e8f0;
+      border-bottom-left-radius: 4px;
+    }
+
+    .input-container {
+      padding: 20px 25px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    #message-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    #send-button, .mic-btn {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 80px;
+    }
+
+    #send-button:hover, .mic-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    #send-button:active, .mic-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    #send-button:disabled, .mic-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .mic-btn {
+      min-width: 50px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .mic-btn.recording {
+      background: #dc2626;
+    }
+
+    .recording-status {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #dc2626;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-xl);
+      color: var(--text-secondary);
+      font-size: var(--font-size-base);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      opacity: 0.8;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: var(--spacing-md);
+      opacity: 0.6;
+      color: var(--secondary-color);
+    }
+
+    .empty-state h3 {
+      font-size: var(--font-size-lg);
+      font-weight: 600;
+      margin-bottom: var(--spacing-xs);
+      color: var(--text-primary);
+    }
+
+    .empty-state p {
+      font-size: var(--font-size-sm);
+      line-height: 1.5;
+      max-width: 280px;
+    }
+
+    /* Loading States */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading.dark {
+      border: 2px solid rgba(37, 99, 235, 0.3);
+      border-top-color: var(--primary-color);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      max-width: 90px;
+      margin-bottom: 16px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .typing-indicator span {
+      width: 10px;
+      height: 10px;
+      background: #667eea;
+      border-radius: 50%;
+      display: inline-block;
+      animation: typingBounce 1.2s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-12px); }
+    }
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        height: 100vh;
+        max-width: 100%;
+        border-radius: 0;
+        max-height: none;
+      }
+
+      .header {
+        border-radius: 0;
+        padding: var(--spacing-md) var(--spacing-lg);
+      }
+
+      .header h1 {
+        font-size: var(--font-size-xl);
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .chat-box {
+        padding: var(--spacing-md);
+      }
+
+      .input-container {
+        padding: var(--spacing-md);
+      }
+
+      .message-content {
+        max-width: 85%;
+        font-size: var(--font-size-base);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: var(--spacing-md);
+      }
+
+      .header h1 {
+        font-size: var(--font-size-lg);
+      }
+
+      .header p {
+        font-size: var(--font-size-xs);
+      }
+
+      .chat-box {
+        padding: var(--spacing-sm);
+      }
+
+      .message-content {
+        max-width: 90%;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+      }
+
+      .input-container {
+        padding: var(--spacing-sm);
+        gap: var(--spacing-sm);
+      }
+
+      #message-input {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+      }
+
+      .button {
+        width: 44px;
+        height: 44px;
+        font-size: var(--font-size-base);
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --background-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        --border-color: #334155;
+      }
+
+      .container {
+        background: #1e293b;
+        border-color: #334155;
+      }
+
+      .chat-box {
+        background: #0f172a;
+      }
+
+      .bot-message {
+        background: #334155;
+        border-color: #475569;
+        color: var(--text-primary);
+      }
+
+      .bot-message::before {
+        border-color: transparent #334155 transparent transparent;
+      }
+
+      .input-container {
+        background: #1e293b;
+        border-color: #334155;
+      }
+
+      #message-input {
+        background: #334155;
+        border-color: #475569;
+        color: var(--text-primary);
+      }
+
+      #message-input:focus {
+        background: #475569;
+        border-color: var(--primary-color);
+      }
+
+      #message-input::placeholder {
+        color: #94a3b8;
+      }
+    }
+
+    /* Speaking indicator animation */
+    .speaking-indicator {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin: 10px 0;
+      border-left: 4px solid #667eea;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes wave {
+      0%, 100% { height: 8px; }
+      50% { height: 20px; }
+    }
+
+    .sound-wave span {
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
+        <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+            <path d="M2 17L12 22L22 17"/>
+            <path d="M2 12L12 17L22 12"/>
+          </svg>
+        </div>
+        <div>
+          <h1>AIELTS BERI</h1>
+          <p>Your IELTS preparation assistant</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-box">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          <circle cx="9" cy="10" r="1"/>
+          <circle cx="12" cy="10" r="1"/>
+          <circle cx="15" cy="10" r="1"/>
+        </svg>
+        <h3>Ready to help with IELTS</h3>
+        <p>Send a message or use voice to start practicing</p>
+      </div>
+    </div>
+
+    <div class="input-container">
+      <button id="mic-button" title="Hold to record voice message" class="mic-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <input type="text" id="message-input" placeholder="Type your message here..." />
+      <button id="send-button" title="Send message">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="recording-status" class="recording-status">
+    <span>🔴</span>
+    <span>Recording... Release to send</span>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>
