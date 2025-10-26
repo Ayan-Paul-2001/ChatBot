@@ -3,6 +3,7 @@ const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const micButton = document.getElementById('mic-button');
 const recordingStatus = document.getElementById('recording-status');
+const voiceSelect = document.getElementById('voice-select');
 const backendUrl = 'Test.php';
 let chatHistory = [];
 
@@ -13,151 +14,54 @@ let isProcessing = false;
 let mediaRecorder = null;
 let audioChunks = [];
 let recordingStream = null;
-let isVoiceInput = false; // Track if input was voice or text
 
-// ===== TEXT-TO-SPEECH =====
-let currentUtterance = null;
+// ===== AUDIO PLAYBACK =====
+let currentAudio = null;
 let isSpeaking = false;
 
-// Check if browser supports speech synthesis
-const speechSupported = 'speechSynthesis' in window;
-
-// Load voices when they become available
-let voicesLoaded = false;
-
-function loadVoices() {
-    if (voicesLoaded) return;
-    
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-        voicesLoaded = true;
-        console.log('🎙️ Voices loaded:', voices.map(v => v.name).join(', '));
-    }
-}
-
-// Load voices on page load and when voices change
-if (speechSupported) {
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices(); // Initial load
-}
-
-// Function to clean special symbols from text for speech synthesis
-function cleanTextForSpeech(text) {
-    // Remove or replace special symbols that shouldn't be read literally
-    let cleanedText = text
-        .replace(/\*\*(.*?)\*\*/g, '$1')          // Remove bold markers **text** -> text
-        .replace(/\*(.*?)\*/g, '$1')             // Remove italic markers *text* -> text
-        .replace(/_(.*?)_/g, '$1')               // Remove underline markers _text_ -> text
-        .replace(/`(.*?)`/g, '$1')               // Remove code markers `text` -> text
-        .replace(/\[(.*?)\]\((.*?)\)/g, '$1')  // Remove markdown links [text](url) -> text
-        .replace(/\#+\s?(.*?)(\n|$)/g, '$1')    // Remove header markers # text -> text
-        .replace(/\-\s/g, '')                   // Remove list markers - text -> text
-        .replace(/\d+\.\s/g, '')               // Remove numbered list markers 1. text -> text
-        .replace(/\<.*?\>/g, '')                // Remove HTML tags <tag>text</tag> -> text
-        .replace(/\&.*?\;/g, '')               // Remove HTML entities &amp; -> 
-        .replace(/\s{2,}/g, ' ');              // Collapse multiple spaces
-    
-    return cleanedText;
-}
-
-// Function to insert natural pauses in text for more human-like speech
-function insertNaturalPauses(text) {
-    // Clean text first to remove special symbols
-    const cleanText = cleanTextForSpeech(text);
-    
-    // Add natural pauses at sentence endings and commas
-    let pausedText = cleanText
-        .replace(/\.(\s|$)/g, '.  ') // Longer pause after sentences
-        .replace(/\,(\s|$)/g, ', ')   // Short pause after commas
-        .replace(/\?(\s|$)/g, '?  ')  // Longer pause after questions
-        .replace(/\!(\s|$)/g, '!  '); // Longer pause after exclamations
-    
-    return pausedText;
-}
-
-// Function to speak text with human-like voice
-function speakText(text) {
-    if (!speechSupported) {
-        console.error('Speech synthesis not supported in this browser');
+// Function to play audio from data URL (base64)
+function playAudioFromDataUrl(dataUrl) {
+    if (!dataUrl) {
+        console.error('No audio data URL provided');
         return;
     }
     
-    // Cancel any ongoing speech
-    if (isSpeaking) {
-        window.speechSynthesis.cancel();
+    console.log('🔊 Playing audio from data URL');
+    
+    // Stop any currently playing audio
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
     }
     
-    // Add natural pauses to the text instead of literal pause words
-    const textWithPauses = insertNaturalPauses(text);
-    const utterance = new SpeechSynthesisUtterance(textWithPauses);
-    utterance.lang = 'en-US';
+    // Create audio element
+    const audio = new Audio(dataUrl);
+    currentAudio = audio;
     
-    // Enhanced human-like voice settings with expressive variations
-    utterance.rate = 0.92; // Slower for more thoughtful, natural pacing
-    utterance.pitch = 1.15; // Higher pitch for more expressive, engaging tone
-    utterance.volume = 0.85; // Softer volume for conversational intimacy
-    
-    // Add natural speech characteristics
-    utterance.onboundary = (event) => {
-        // Add subtle pauses and emphasis at natural break points
-        if (event.name === 'sentence' || event.name === 'word') {
-            // Small random variations to mimic human speech patterns
-            const pauseVariation = Math.random() * 0.1;
-            utterance.rate = 0.92 + pauseVariation;
-        }
-    };
-    
-    // Try to select a more natural-sounding voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoices = [
-        'Google UK English Female',
-        'Google UK English Male', 
-        'Microsoft David Desktop',
-        'Microsoft Zira Desktop',
-        'Samantha',
-        'Alex',
-        'Daniel',
-        'Fiona',
-        'Karen',
-        'Moira',
-        'Tessa'
-    ];
-    
-    // Find the first available preferred voice
-    const selectedVoice = voices.find(voice => 
-        preferredVoices.includes(voice.name)
-    );
-    
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-        console.log('🎙️ Using voice:', selectedVoice.name);
-    } else if (voices.length > 0) {
-        // Fallback to any available voice
-        utterance.voice = voices.find(voice => voice.lang.includes('en')) || voices[0];
-        console.log('🎙️ Using fallback voice:', utterance.voice.name);
-    }
-    
-    utterance.onstart = () => {
+    audio.onplay = () => {
+        console.log('🎵 Audio playback started');
         isSpeaking = true;
-        console.log('🔊 Speaking started with human-like voice');
     };
     
-    utterance.onend = () => {
+    audio.onended = () => {
+        console.log('✅ Audio playback ended');
         isSpeaking = false;
-        console.log('🔊 Speaking ended');
+        currentAudio = null;
     };
     
-    utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
+    audio.onerror = (event) => {
+        console.error('Audio playback error:', event);
         isSpeaking = false;
+        currentAudio = null;
+        alert('⚠️ Audio playback failed. Please check your browser settings.');
     };
     
-    currentUtterance = utterance;
-    
-    // Add small delay to ensure voice selection works properly
-    setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-    }, 100);
+    // Play the audio
+    audio.play().catch(error => {
+        console.error('Failed to play audio:', error);
+        isSpeaking = false;
+        currentAudio = null;
+    });
 }
 
 // ===== MESSAGE HANDLING =====
@@ -166,18 +70,13 @@ function addMessage(sender, message) {
     messageElement.className = sender === 'You' ? 'message user-message' : 'message bot-message';
     messageElement.innerHTML = message.replace(/\n/g, '<br>');
     
-    // Add timestamp
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    messageElement.setAttribute('data-time', timestamp);
-    
     chatBox.appendChild(messageElement);
     
-    // Smooth scroll with easing
+    // Smooth scroll
     setTimeout(() => {
         messageElement.scrollIntoView({ 
             behavior: 'smooth', 
-            block: 'end',
-            inline: 'nearest'
+            block: 'end'
         });
     }, 50);
     
@@ -208,11 +107,7 @@ async function sendMessage(messageText = null) {
     const typingDiv = document.createElement('div');
     typingDiv.className = 'typing-indicator';
     typingDiv.id = 'typing-indicator';
-    typingDiv.innerHTML = `
-        <span></span>
-        <span></span>
-        <span></span>
-    `;
+    typingDiv.innerHTML = `<span></span><span></span><span></span>`;
     chatBox.appendChild(typingDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -226,7 +121,8 @@ async function sendMessage(messageText = null) {
             },
             body: JSON.stringify({
                 message: userMessage,
-                history: chatHistory
+                history: chatHistory,
+                voice: getSelectedVoice()
             }),
         });
 
@@ -237,15 +133,18 @@ async function sendMessage(messageText = null) {
         if (typingIndicator) typingIndicator.remove();
 
         if (data.error) {
-            addMessage('Error', data.error + (data.details ? `<br><pre>${JSON.stringify(data.details, null, 2)}</pre>` : ''));
+            addMessage('Error', data.error);
         } else {
             const botMessage = data.reply;
             addMessage('IELTS Bot', botMessage);
             chatHistory.push({ role: 'model', parts: [{ text: botMessage }] });
             
-            // If input was voice, respond with voice
-            if (isVoiceMessage && speechSupported) {
-                speakText(botMessage);
+            // ONLY play audio if this was a VOICE input (not text input)
+            if (isVoiceMessage && data.audio_url) {
+                console.log('🎙️ Playing response with voice:', data.voice_used);
+                playAudioFromDataUrl(data.audio_url);
+            } else {
+                console.log('ℹ️ Text input - no audio playback');
             }
         }
 
@@ -253,7 +152,7 @@ async function sendMessage(messageText = null) {
         console.error('Fetch Error:', error);
         const typingIndicator = document.getElementById('typing-indicator');
         if (typingIndicator) typingIndicator.remove();
-        addMessage('Error', 'Could not connect to the chatbot server.');
+        addMessage('Error', 'Could not connect to the server.');
     } finally {
         // Re-enable input
         isProcessing = false;
@@ -273,11 +172,9 @@ function handleRecordingStart() {
             recordingStream = stream;
             audioChunks = [];
             
-            // Create MediaRecorder
             mediaRecorder = new MediaRecorder(stream);
             
             mediaRecorder.ondataavailable = (event) => {
-                console.log('📦 Audio data received:', event.data.size);
                 if (event.data.size > 0) {
                     audioChunks.push(event.data);
                 }
@@ -290,18 +187,15 @@ function handleRecordingStart() {
                 cleanupRecording();
             };
             
-            // Start recording
             mediaRecorder.start();
-            console.log('✅ Recording started');
             
             // Update UI
             micButton.classList.add('recording');
-            micButton.textContent = '⏹️';
+            micButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
             recordingStatus.classList.add('show');
             sendButton.disabled = true;
             messageInput.disabled = true;
             
-            // Add haptic feedback if available
             if (navigator.vibrate) {
                 navigator.vibrate(100);
             }
@@ -317,42 +211,38 @@ function handleRecordingStart() {
 function handleRecordingStop() {
     console.log('🛑 Stopping recording...');
     
-    // Update UI first
+    // Update UI
     micButton.classList.remove('recording');
-    micButton.textContent = '🎤';
+    micButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>`;
     recordingStatus.classList.remove('show');
     
-    // Add haptic feedback if available
     if (navigator.vibrate) {
         navigator.vibrate([50, 50, 50]);
     }
     
     // Stop all media tracks
     if (recordingStream) {
-        recordingStream.getTracks().forEach(track => {
-            track.stop();
-            console.log('🔇 Track stopped');
-        });
+        recordingStream.getTracks().forEach(track => track.stop());
         recordingStream = null;
     }
     
     // Check if we have audio data
     if (audioChunks.length === 0) {
-        console.warn('⚠️ No audio chunks recorded');
-        addMessage('Error', 'No audio recorded. Please hold the button longer and speak clearly.');
+        addMessage('Error', 'No audio recorded. Please hold the button longer.');
         sendButton.disabled = false;
         messageInput.disabled = false;
         return;
     }
     
-    console.log('📊 Total audio chunks:', audioChunks.length);
-    
     // Create blob and send
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-    console.log('🎵 Audio blob size:', audioBlob.size, 'bytes');
     
     if (audioBlob.size < 1000) {
-        console.warn('⚠️ Audio too short');
         addMessage('Error', 'Recording too short. Please speak longer.');
         sendButton.disabled = false;
         messageInput.disabled = false;
@@ -370,17 +260,14 @@ async function sendVoiceMessage(audioBlob) {
     const typingDiv = document.createElement('div');
     typingDiv.className = 'typing-indicator';
     typingDiv.id = 'typing-indicator';
-    typingDiv.innerHTML = `
-        <span></span>
-        <span></span>
-        <span></span>
-    `;
+    typingDiv.innerHTML = `<span></span><span></span><span></span>`;
     chatBox.appendChild(typingDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
     
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
-    
+    formData.append('voice', getSelectedVoice());
+
     console.log('📤 Sending audio to server...');
     
     try {
@@ -389,14 +276,11 @@ async function sendVoiceMessage(audioBlob) {
             body: formData
         });
         
-        console.log('📥 Response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('📄 Response data:', data);
         
         // Remove typing indicator
         const typingIndicator = document.getElementById('typing-indicator');
@@ -404,15 +288,23 @@ async function sendVoiceMessage(audioBlob) {
         
         if (data.error) {
             const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-            const detailsMsg = data.details ? `<br><small>${JSON.stringify(data.details)}</small>` : '';
-            addMessage('Error', errorMsg + detailsMsg);
+            addMessage('Error', errorMsg);
             console.error('API Error:', data);
         } else if (data.reply) {
             addMessage('IELTS Bot', data.reply);
             
-            // Since this is a voice input, respond with voice
-            if (speechSupported) {
-                speakText(data.reply);
+            // Log TTS info if available
+            if (data.tts_info) {
+                console.log('🔊 TTS Info:', data.tts_info);
+                console.log('✅ Voice confirmed:', data.voice_used);
+            }
+            
+            // Since this is a voice input, always respond with voice
+            if (data.audio_url) {
+                console.log('🎙️ Playing response audio with voice:', data.voice_used);
+                playAudioFromDataUrl(data.audio_url);
+            } else {
+                console.warn('⚠️ No audio URL in response');
             }
         } else {
             addMessage('Error', 'No response received from server');
@@ -441,7 +333,12 @@ function cleanupRecording() {
         mediaRecorder.stop();
     }
     micButton.classList.remove('recording');
-    micButton.textContent = '🎤';
+    micButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>`;
     recordingStatus.classList.remove('show');
     sendButton.disabled = false;
     messageInput.disabled = false;
@@ -461,20 +358,17 @@ messageInput.addEventListener('keypress', function(e) {
 // Mouse events for desktop
 micButton.addEventListener('mousedown', (e) => {
     e.preventDefault();
-    console.log('🖱️ Mouse down');
     handleRecordingStart();
 });
 
 micButton.addEventListener('mouseup', (e) => {
     e.preventDefault();
-    console.log('🖱️ Mouse up');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
 });
 
 micButton.addEventListener('mouseleave', (e) => {
-    console.log('🖱️ Mouse leave');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
@@ -483,13 +377,11 @@ micButton.addEventListener('mouseleave', (e) => {
 // Touch events for mobile
 micButton.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    console.log('👆 Touch start');
     handleRecordingStart();
 });
 
 micButton.addEventListener('touchend', (e) => {
     e.preventDefault();
-    console.log('👆 Touch end');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
@@ -503,3 +395,32 @@ micButton.addEventListener('contextmenu', (e) => {
 // Initial greeting
 console.log('🚀 Chat initialized');
 addMessage('IELTS Bot', 'Hello! How can I help you prepare for your IELTS exam today?');
+
+// Voice selection change handler
+voiceSelect.addEventListener('change', function() {
+    const selectedVoice = voiceSelect.value;
+    console.log('🎙️ Voice selected:', selectedVoice);
+    
+    if (selectedVoice) {
+        localStorage.setItem('selectedVoice', selectedVoice);
+        console.log('💾 Voice preference saved');
+    } else {
+        localStorage.removeItem('selectedVoice');
+    }
+});
+
+// Load saved voice preference
+window.addEventListener('DOMContentLoaded', function() {
+    const savedVoice = localStorage.getItem('selectedVoice');
+    if (savedVoice && voiceSelect) {
+        voiceSelect.value = savedVoice;
+        console.log('✅ Loaded saved voice preference:', savedVoice);
+    }
+});
+
+// Function to get selected voice
+function getSelectedVoice() {
+    const selectedVoice = voiceSelect.value;
+    const voice = selectedVoice || 'emma';
+    return voice;
+}
