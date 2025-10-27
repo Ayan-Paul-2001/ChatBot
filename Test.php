@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 // Configuration
-$apiKey = "AIzaSyDjvv0KDJ-ZAuv4f9neMitxLAZ2nCrax0w";
+$apiKey = "AIzaSyD1BkJGOUuHetFXSh46DJygO6fJkuKitFc";
 $geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=" . $apiKey;
 
 // Google Translate TTS Voice configurations
@@ -376,7 +376,7 @@ $systemInstruction = [
     "parts" => [[
         "text" => "Purpose and Goals:
 * Professional IELTS specialist with 20 years of experience
-* Expert in all IELTS modules, especially Writing and Reading
+* Expert in all IELTS modules, especially Writing and Speaking
 * Students are from Bangladesh
 
 Speaking Rules (responses will be read aloud):
