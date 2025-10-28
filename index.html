@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AIELTS BERI Chatbot</title>
+  <title>AIELTS BERI Chatbot - Live Voice</title>
   <style>
     * {
       margin: 0;
@@ -38,6 +39,7 @@
       color: white;
       padding: 20px;
       text-align: center;
+      position: relative;
     }
 
     .header h1 {
@@ -49,6 +51,35 @@
     .header p {
       font-size: 13px;
       opacity: 0.9;
+    }
+
+    .live-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #dc2626;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .live-badge.active {
+      display: flex;
+    }
+
+    .live-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
     }
 
     #chat-box {
@@ -127,8 +158,10 @@
     .voice-row {
       display: flex;
       justify-content: center;
+      align-items: center;
       padding-top: 8px;
       border-top: 1px solid #f1f5f9;
+      gap: 12px;
     }
 
     #message-input {
@@ -153,7 +186,7 @@
       border-radius: 6px;
       font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -170,16 +203,28 @@
 
     .mic-btn {
       padding: 10px;
+      position: relative;
     }
 
     .mic-btn.recording {
       background: #dc2626;
-      animation: pulse 1.5s ease-in-out infinite;
+      animation: pulseButton 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulseButton {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      }
+      50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+      }
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
+      50% { opacity: 0.5; }
     }
 
     .recording-status {
@@ -187,35 +232,63 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: #dc2626;
+      background: rgba(220, 38, 38, 0.95);
       color: white;
-      padding: 16px 24px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 20px 32px;
+      border-radius: 12px;
+      font-size: 15px;
       font-weight: 600;
       display: none;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       z-index: 1000;
+      backdrop-filter: blur(10px);
     }
 
     .recording-status.show {
       display: flex;
+      animation: scaleIn 0.3s ease;
     }
 
-    .recording-status::before {
-      content: '';
-      width: 10px;
-      height: 10px;
+    @keyframes scaleIn {
+      from {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .recording-status .pulse-circle {
+      width: 60px;
+      height: 60px;
       background: white;
       border-radius: 50%;
-      animation: blink 1s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 1.5s ease-in-out infinite;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+    .recording-status .pulse-circle svg {
+      width: 30px;
+      height: 30px;
+      color: #dc2626;
+    }
+
+    .recording-status .status-text {
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .recording-status .status-hint {
+      font-size: 12px;
+      opacity: 0.9;
+      font-weight: 400;
     }
 
     .empty-state {
@@ -291,6 +364,8 @@
       cursor: pointer;
       transition: border-color 0.2s;
       max-width: 280px;
+      opacity: 0.5;
+      pointer-events: none;
     }
 
     #voice-select:focus {
@@ -301,8 +376,24 @@
       font-size: 11px;
       color: #64748b;
       font-weight: 500;
-      margin-bottom: 4px;
       text-align: center;
+    }
+
+    .voice-note {
+      font-size: 10px;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .mic-instruction {
+      text-align: center;
+      padding: 8px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #1e40af;
+      margin-bottom: 8px;
     }
 
     @media (max-width: 768px) {
@@ -359,14 +450,21 @@
       #send-button, .mic-btn {
         padding: 10px;
       }
+
+      .recording-status {
+        padding: 16px 24px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
+      <div class="live-badge" id="live-badge">
+        LIVE
+      </div>
       <h1>AIELTS BERI</h1>
-      <p>Your IELTS preparation assistant with voice support</p>
+      <p>Real-time voice conversation with Gemini Live API</p>
     </div>
 
     <div id="chat-box">
@@ -374,14 +472,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        <h3>Ready to help with IELTS</h3>
-        <p>Send a message or use voice to start</p>
+        <h3>Ready for Live Conversation</h3>
+        <p>Hold the microphone button to speak with me in real-time<br>or type a message below</p>
       </div>
     </div>
 
     <div class="input-container">
+      <div class="mic-instruction">
+        💡 <strong>Hold</strong> the mic button to speak • <strong>Release</strong> to stop
+      </div>
       <div class="input-row">
-        <button id="mic-button" title="Hold to record" class="mic-btn">
+        <button id="mic-button" title="Hold to talk" class="mic-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -389,7 +490,7 @@
             <line x1="8" y1="23" x2="16" y2="23"/>
           </svg>
         </button>
-        <input type="text" id="message-input" placeholder="Type your message..." />
+        <input type="text" id="message-input" placeholder="Or type your message..." />
         <button id="send-button" title="Send">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="22" y1="2" x2="11" y2="13"/>
@@ -399,16 +500,12 @@
       </div>
       <div class="voice-row">
         <div style="width: 100%; max-width: 280px;">
-          <div class="voice-label">🎙️ Select Voice</div>
-          <select id="voice-select">
-            <option value="emma">🇺🇸 Emma (US Female)</option>
-            <option value="james">🇬🇧 James (UK Male)</option>
-            <option value="olivia">🇦🇺 Olivia (Australian)</option>
-            <option value="noah">🇨🇦 Noah (Canadian)</option>
-            <option value="sophia">🇮🇳 Sophia (Indian)</option>
-            <option value="william">🇮🇪 William (Irish)</option>
-            <option value="ava">🇿🇦 Ava (South African)</option>
-            <option value="oliver">🇳🇿 Oliver (New Zealand)</option>
+          <div class="voice-label">
+            🎙️ Voice Selection
+            <span class="voice-note">(Gemini uses built-in voice)</span>
+          </div>
+          <select id="voice-select" disabled>
+            <option value="aoede">Aoede (Gemini Default)</option>
           </select>
         </div>
       </div>
@@ -416,7 +513,14 @@
   </div>
 
   <div id="recording-status" class="recording-status">
-    <span>Recording... Release to send</span>
+    <div class="pulse-circle">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      </svg>
+    </div>
+    <div class="status-text">🎙️ Listening...</div>
+    <div class="status-hint">Release to stop</div>
   </div>
 
   <script src="chat.js"></script>
